@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Vehicle Utilization Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #f8fafc; font-family: 'Sora', sans-serif; padding: 0; min-height: 100vh; color: #0f172a; }
@@ -87,7 +88,7 @@
 <div style="background:#fff;padding:28px 224px 24px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);border-radius:0">
   <div class="fleet-tags" id="fleetTags"></div>
   <h1>Vehicle Utilization Dashboard</h1>
-  <p class="subtitle">57 vehicles (LOCAL · MED · OTR · MINI) &nbsp;·&nbsp; Jan 2023 – Feb 2026 &nbsp;·&nbsp; 5 hrs/day = 100%</p>
+  <p class="subtitle" id="dashSubtitle">57 vehicles (LOCAL · MED · OTR · MINI) &nbsp;·&nbsp; Jan 2023 – Feb 2026 &nbsp;·&nbsp; 5 hrs/day = 100%</p>
 </div>
 
 <div style="padding:0 224px 32px">
@@ -1794,22 +1795,12 @@ FLEET_DATA.forEach(({ fleet, size, vals }) => {
   const DAYS = ['S','M','T','W','T','F','S'];
   const MONTHS_CAL = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // Build lookup
-  const byDate = {};
-  DAILY_UTIL.forEach(r => { byDate[r.d] = r.v; });
-
-  // Color scale: 0% = #f1f5f9, 100% = #0f4c81 with steps through blues/teals
   function utilColor(v) {
     if (v === null || v === undefined) return '#f8fafc';
     if (v === 0) return '#f1f5f9';
     const stops = [
-      [0,  '#dbeafe'],
-      [20, '#93c5fd'],
-      [35, '#60a5fa'],
-      [50, '#3b82f6'],
-      [65, '#1d4ed8'],
-      [80, '#1e3a8a'],
-      [100,'#0f2d6b'],
+      [0,'#dbeafe'],[20,'#93c5fd'],[35,'#60a5fa'],
+      [50,'#3b82f6'],[65,'#1d4ed8'],[80,'#1e3a8a'],[100,'#0f2d6b'],
     ];
     for (let i = 1; i < stops.length; i++) {
       if (v <= stops[i][0]) {
@@ -1821,40 +1812,16 @@ FLEET_DATA.forEach(({ fleet, size, vals }) => {
   }
 
   function lerpColor(a, b, t) {
-    const ah = parseInt(a.slice(1),16), bh = parseInt(b.slice(1),16);
+    const ah=parseInt(a.slice(1),16), bh=parseInt(b.slice(1),16);
     const ar=ah>>16, ag=(ah>>8)&0xff, ab=ah&0xff;
     const br=bh>>16, bg=(bh>>8)&0xff, bb=bh&0xff;
     const r=Math.round(ar+(br-ar)*t), g=Math.round(ag+(bg-ag)*t), bl=Math.round(ab+(bb-ab)*t);
     return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bl.toString(16).padStart(2,'0')}`;
   }
 
-  const years = [...new Set(DAILY_UTIL.map(r => r.d.slice(0,4)))].sort();
-  let activeCalYear = years[years.length - 1];
-
-  // Year tabs
-  const tabsEl = document.getElementById('yearTabsCalendar');
-  years.forEach(yr => {
-    const btn = document.createElement('button');
-    btn.textContent = yr;
-    btn.dataset.yr = yr;
-    btn.style.cssText = `padding:3px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace;font-weight:500;transition:all 0.15s;border:1.5px solid #e2e8f0;background:#f8fafc;color:#94a3b8`;
-    btn.addEventListener('click', () => { activeCalYear = yr; renderCalendar(); updateTabs(); });
-    tabsEl.appendChild(btn);
-  });
-
-  function updateTabs() {
-    tabsEl.querySelectorAll('button').forEach(btn => {
-      const active = btn.dataset.yr === activeCalYear;
-      btn.style.borderColor = active ? '#3b82f6' : '#e2e8f0';
-      btn.style.background   = active ? '#dbeafe' : '#f8fafc';
-      btn.style.color        = active ? '#1d4ed8' : '#94a3b8';
-    });
-  }
-
-  // Legend
+  // Legend (built once)
   const legendEl = document.getElementById('legendCells');
-  const legendSteps = [0,10,20,30,40,50,60,70,80,90,100];
-  legendSteps.forEach(v => {
+  [0,10,20,30,40,50,60,70,80,90,100].forEach(v => {
     const cell = document.createElement('div');
     cell.style.cssText = `width:${DAY_SIZE}px;height:${DAY_SIZE}px;border-radius:2px;background:${utilColor(v)}`;
     legendEl.appendChild(cell);
@@ -1862,233 +1829,294 @@ FLEET_DATA.forEach(({ fleet, size, vals }) => {
 
   const tooltipEl = document.getElementById('calTooltip');
 
-  function renderCalendar() {
+  // Expose globally so CSV refresh can call these
+  window.buildCalendar = function(activeYr) {
+    const data   = window._DAILY_UTIL || DAILY_UTIL;
+    const byDate = {};
+    data.forEach(r => { byDate[r.d] = r.v; });
+
     const wrap = document.getElementById('calendarWrap');
     wrap.innerHTML = '';
-
-    const yr = parseInt(activeCalYear);
+    const yr = parseInt(activeYr);
     const startDate = new Date(yr, 0, 1);
-    const endDate = activeCalYear === years[years.length-1]
-      ? new Date(Math.max(...DAILY_UTIL.filter(r=>r.d.startsWith(activeCalYear)).map(r=>new Date(r.d))))
+    const yearData  = data.filter(r => r.d.startsWith(String(yr)));
+    const endDate   = yearData.length
+      ? new Date(Math.max(...yearData.map(r => new Date(r.d))))
       : new Date(yr, 11, 31);
 
-    // Number of weeks to show
-    const firstDow = startDate.getDay(); // 0=Sun
+    const firstDow  = startDate.getDay();
     const totalDays = Math.ceil((endDate - startDate) / 86400000) + 1;
     const totalWeeks = Math.ceil((firstDow + totalDays) / 7);
-
     const svgW = totalWeeks * CELL + 36;
-    const svgH = 7 * CELL + 28; // 7 rows + month labels
+    const svgH = 7 * CELL + 28;
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('width', svgW);
-    svg.setAttribute('height', svgH);
+    svg.setAttribute('width', svgW); svg.setAttribute('height', svgH);
     svg.style.display = 'block';
 
-    // Day labels (left)
     [1,3,5].forEach(d => {
       const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-      t.setAttribute('x', 0);
-      t.setAttribute('y', 20 + d * CELL + DAY_SIZE * 0.75);
-      t.setAttribute('font-size', 9);
-      t.setAttribute('fill', '#94a3b8');
-      t.setAttribute('font-family', "'DM Mono',monospace");
-      t.textContent = DAYS[d];
-      svg.appendChild(t);
+      t.setAttribute('x',0); t.setAttribute('y', 20 + d*CELL + DAY_SIZE*0.75);
+      t.setAttribute('font-size',9); t.setAttribute('fill','#94a3b8');
+      t.setAttribute('font-family',"'DM Mono',monospace");
+      t.textContent = DAYS[d]; svg.appendChild(t);
     });
 
-    // Draw cells
-    let monthLabelDrawn = {};
+    const monthLabelDrawn = {};
     for (let w = 0; w < totalWeeks; w++) {
       for (let d = 0; d < 7; d++) {
-        const dayOffset = w * 7 + d - firstDow;
+        const dayOffset = w*7 + d - firstDow;
         if (dayOffset < 0 || dayOffset >= totalDays) continue;
-
         const date = new Date(yr, 0, 1 + dayOffset);
         if (date > endDate) continue;
-
-        const ds = date.toISOString().slice(0,10);
+        const ds  = date.toISOString().slice(0,10);
         const val = byDate[ds] !== undefined ? byDate[ds] : null;
+        const x = 22 + w*CELL, y = 20 + d*CELL;
 
-        const x = 22 + w * CELL;
-        const y = 20 + d * CELL;
-
-        // Month label
         if (date.getDate() === 1 || (w === 0 && d === firstDow)) {
           const mo = date.getMonth();
           if (!monthLabelDrawn[mo]) {
             const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-            t.setAttribute('x', x);
-            t.setAttribute('y', 12);
-            t.setAttribute('font-size', 9);
-            t.setAttribute('fill', '#94a3b8');
-            t.setAttribute('font-family', "'Sora',sans-serif");
-            t.textContent = MONTHS_CAL[mo];
-            svg.appendChild(t);
+            t.setAttribute('x',x); t.setAttribute('y',12);
+            t.setAttribute('font-size',9); t.setAttribute('fill','#94a3b8');
+            t.setAttribute('font-family',"'Sora',sans-serif");
+            t.textContent = MONTHS_CAL[mo]; svg.appendChild(t);
             monthLabelDrawn[mo] = true;
           }
         }
 
         const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-        rect.setAttribute('x', x);
-        rect.setAttribute('y', y);
-        rect.setAttribute('width', DAY_SIZE);
-        rect.setAttribute('height', DAY_SIZE);
-        rect.setAttribute('rx', 2);
+        rect.setAttribute('x',x); rect.setAttribute('y',y);
+        rect.setAttribute('width',DAY_SIZE); rect.setAttribute('height',DAY_SIZE);
+        rect.setAttribute('rx',2);
         rect.setAttribute('fill', val !== null ? utilColor(val) : '#f1f5f9');
-        rect.style.cursor = 'pointer';
-        rect.style.transition = 'opacity 0.1s';
-
+        rect.style.cursor = 'pointer'; rect.style.transition = 'opacity 0.1s';
         rect.addEventListener('mouseenter', () => {
           rect.style.opacity = '0.75';
           const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][date.getDay()];
-          tooltipEl.textContent = val !== null
-            ? `${dow} ${ds}  →  ${val.toFixed(1)}%`
-            : `${dow} ${ds}  →  no data`;
+          tooltipEl.textContent = val !== null ? `${dow} ${ds}  →  ${val.toFixed(1)}%` : `${dow} ${ds}  →  no data`;
         });
-        rect.addEventListener('mouseleave', () => {
-          rect.style.opacity = '1';
-          tooltipEl.textContent = '';
-        });
-
+        rect.addEventListener('mouseleave', () => { rect.style.opacity='1'; tooltipEl.textContent=''; });
         svg.appendChild(rect);
       }
     }
-
     wrap.appendChild(svg);
-  }
+  };
 
-  renderCalendar();
-  updateTabs();
+  window.buildCalTabs = function(years) {
+    const tabsEl = document.getElementById('yearTabsCalendar');
+    tabsEl.innerHTML = '';
+    const activeYr = window._calActiveYear || years[years.length-1];
+    years.forEach(yr => {
+      const btn = document.createElement('button');
+      btn.textContent = yr; btn.dataset.yr = yr;
+      const isActive = yr === activeYr;
+      btn.style.cssText = `padding:3px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace;font-weight:500;transition:all 0.15s;border:1.5px solid ${isActive?'#3b82f6':'#e2e8f0'};background:${isActive?'#dbeafe':'#f8fafc'};color:${isActive?'#1d4ed8':'#94a3b8'}`;
+      btn.addEventListener('click', () => {
+        window._calActiveYear = yr;
+        buildCalendar(yr);
+        buildCalTabs(years);
+      });
+      tabsEl.appendChild(btn);
+    });
+  };
+
+  // Initial render using hardcoded data
+  const initYears = [...new Set(DAILY_UTIL.map(r => r.d.slice(0,4)))].sort();
+  window._calActiveYear = initYears[initYears.length-1];
+  buildCalendar(window._calActiveYear);
+  buildCalTabs(initYears);
+
 })();
 
 
 // ── Vehicle-level table ──────────────────────────────────────────────────────
+// Initial render using hardcoded data
+renderVehicleTable(VEHICLE_TTM, VEH_MONTHS);
+
+// Build vehicle table legend
 (function() {
-  function cellColor(v) {
-    if (v === null || v === undefined) return {bg:'#f8fafc', fg:'#cbd5e1'};
-    const stops = [
-      [0,  '#fef9f0', '#f59e0b'],
-      [20, '#fef3c7', '#d97706'],
-      [35, '#dcfce7', '#16a34a'],
-      [50, '#bbf7d0', '#15803d'],
-      [65, '#86efac', '#166534'],
-      [80, '#4ade80', '#14532d'],
-      [100,'#16a34a', '#f0fdf4'],
-    ];
-    for (let i = 1; i < stops.length; i++) {
-      if (v <= stops[i][0]) {
-        const t = (v - stops[i-1][0]) / (stops[i][0] - stops[i-1][0]);
-        return {
-          bg: lerpColor(stops[i-1][1], stops[i][1], t),
-          fg: v >= 65 ? stops[i][2] : '#1a2e1a'
-        };
-      }
-    }
-    return {bg:'#15803d', fg:'#f0fdf4'};
+  function cellColorLegend(v) {
+    const stops=[[0,'#fef9f0'],[20,'#fef3c7'],[35,'#dcfce7'],[50,'#bbf7d0'],[65,'#86efac'],[80,'#4ade80'],[100,'#16a34a']];
+    for(let i=1;i<stops.length;i++){if(v<=stops[i][0]){const t=(v-stops[i-1][0])/(stops[i][0]-stops[i-1][0]);const lc=(a,b,t)=>{const p=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];const[ar,ag,ab]=p(a),[br,bg,bb]=p(b);return'#'+[ar+(br-ar)*t,ag+(bg-ag)*t,ab+(bb-ab)*t].map(x=>Math.round(x).toString(16).padStart(2,'0')).join('');};return lc(stops[i-1][1],stops[i][1],t);}}return '#16a34a';
   }
-
-  function lerpColor(a, b, t) {
-    const parse = c => [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
-    const [ar,ag,ab] = parse(a), [br,bg,bb] = parse(b);
-    const r=Math.round(ar+(br-ar)*t), g=Math.round(ag+(bg-ag)*t), bl=Math.round(ab+(bb-ab)*t);
-    return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bl.toString(16).padStart(2,'0')}`;
-  }
-
-  const fleets = ['LOCAL','MED','OTR','MINI'];
-  const table = document.getElementById('vehicleTable');
-
-  // Header
-  const thead = table.createTHead();
-  const hrow = thead.insertRow();
-
-  const thFleet = document.createElement('th');
-  thFleet.textContent = 'Fleet';
-  thFleet.style.cssText = 'padding:8px 10px;text-align:left;color:#fff;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;position:sticky;left:0;z-index:2;min-width:60px;background:#1e293b';
-  hrow.appendChild(thFleet);
-
-  const thVeh = document.createElement('th');
-  thVeh.textContent = 'Vehicle';
-  thVeh.style.cssText = 'padding:8px 10px;text-align:left;color:#fff;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;position:sticky;left:60px;z-index:2;min-width:72px;background:#1e293b';
-  hrow.appendChild(thVeh);
-
-  VEH_MONTHS.forEach(m => {
-    const th = document.createElement('th');
-    th.textContent = m;
-    th.style.cssText = 'padding:8px 8px;text-align:center;color:#94a3b8;font-size:10px;white-space:nowrap;min-width:52px;background:#1e293b;font-weight:500';
-    hrow.appendChild(th);
-  });
-
-  const thTTM = document.createElement('th');
-  thTTM.textContent = 'TTM Avg';
-  thTTM.style.cssText = 'padding:8px 10px;text-align:center;color:#fff;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;min-width:72px;background:#0f172a;border-left:2px solid #334155;font-weight:700';
-  hrow.appendChild(thTTM);
-
-  // Body
-  const tbody = table.createTBody();
-  let lastFleet = null;
-
-  VEHICLE_TTM.forEach(row => {
-    const tr = tbody.insertRow();
-    const fleetColor = FLEET_COLORS[row.f];
-    const isNewFleet = row.f !== lastFleet;
-    lastFleet = row.f;
-
-    // Add fleet header row
-    if (isNewFleet) {
-      const ftr = tbody.insertRow();
-      ftr.insertBefore(ftr.insertCell(), ftr.firstChild);
-      const fcell = ftr.cells[0];
-      fcell.colSpan = VEH_MONTHS.length + 3;
-      fcell.textContent = row.f;
-      fcell.style.cssText = `padding:6px 10px;font-size:11px;font-weight:700;color:${fleetColor};background:${fleetColor}12;border-top:2px solid ${fleetColor}30;letter-spacing:0.08em;font-family:'Sora',sans-serif`;
-      // Move the fleet header row before current tr
-      tbody.insertBefore(ftr, tr);
-    }
-
-    // Fleet cell
-    const tdFleet = tr.insertCell();
-    tdFleet.style.cssText = `padding:6px 10px;color:${fleetColor};font-weight:600;font-size:10px;background:#fff;position:sticky;left:0;z-index:1;border-right:1px solid #f1f5f9;border-bottom:1px solid #f8fafc;white-space:nowrap`;
-    tdFleet.textContent = row.f;
-
-    // Vehicle cell
-    const tdVeh = tr.insertCell();
-    tdVeh.style.cssText = `padding:6px 10px;color:#334155;font-weight:500;background:#fff;position:sticky;left:60px;z-index:1;border-right:1px solid #e2e8f0;border-bottom:1px solid #f8fafc;white-space:nowrap`;
-    tdVeh.textContent = row.v;
-
-    // Monthly cells
-    row.m.forEach(val => {
-      const td = tr.insertCell();
-      if (val === null) {
-        td.textContent = '·';
-        td.style.cssText = 'padding:6px 8px;text-align:center;color:#cbd5e1;background:#f8fafc;border-bottom:1px solid #f8fafc;font-size:13px';
-      } else {
-        const c = cellColor(val);
-        td.textContent = val.toFixed(1) + '%';
-        td.style.cssText = `padding:6px 8px;text-align:center;background:${c.bg};color:${c.fg};font-weight:500;border-bottom:1px solid #f8fafc;border-radius:3px;transition:opacity 0.1s`;
-        td.addEventListener('mouseenter', () => td.style.opacity = '0.75');
-        td.addEventListener('mouseleave', () => td.style.opacity = '1');
-      }
-    });
-
-    // TTM Avg column
-    const tdTTM = tr.insertCell();
-    if (row.ttm !== null) {
-      const c = cellColor(row.ttm);
-      tdTTM.textContent = row.ttm.toFixed(1) + '%';
-      tdTTM.style.cssText = `padding:6px 10px;text-align:center;background:${c.bg};color:${c.fg};font-weight:700;font-size:12px;border-left:2px solid #e2e8f0;border-bottom:1px solid #f8fafc`;
-    }
-  });
-
-  // Legend
   const legendEl = document.getElementById('vehLegend');
   [0,10,20,30,40,50,60,70,80,90,100].forEach(v => {
     const div = document.createElement('div');
-    div.style.cssText = `width:18px;height:14px;border-radius:2px;background:${cellColor(v).bg}`;
+    div.style.cssText = `width:18px;height:14px;border-radius:2px;background:${cellColorLegend(v)}`;
     legendEl.appendChild(div);
   });
 })();
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── Render functions (callable on CSV refresh) ──────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderKPIRow(cfg) {
+  // cfg: { ytdYear, ytdVal, ytdPP, ytdPriorYear,
+  //        ttmAvg, ttmPP, ttmPriorLabel,
+  //        fullYear, fullYearVal, fullYearPP, prevYear }
+  const kpiRow = document.getElementById('kpiRow');
+  kpiRow.innerHTML = '';
+  const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
+  const cards = [
+    { label:`YTD ${cfg.ytdYear}`,     value:`${cfg.ytdVal.toFixed(1)}%`,
+      sub:`${fmt(cfg.ytdPP)}pp vs ${cfg.ytdPriorYear}`, trend:cfg.ytdPP },
+    { label:`TTM Utilization`,         value:`${cfg.ttmAvg.toFixed(1)}%`,
+      sub:`${fmt(cfg.ttmPP)}pp vs ${cfg.ttmPriorLabel}`, trend:cfg.ttmPP },
+    { label:`${cfg.fullYear} Full Year`, value:`${cfg.fullYearVal.toFixed(1)}%`,
+      sub:`${fmt(cfg.fullYearPP)}pp vs ${cfg.prevYear}`, trend:cfg.fullYearPP },
+  ];
+  cards.forEach(k => {
+    const div = document.createElement('div');
+    div.className = 'kpi-card';
+    div.style.borderTop = '3px solid #e2e8f0';
+    const cls   = k.trend >= 0 ? 'trend-up' : 'trend-down';
+    const arrow = k.trend >= 0 ? '▲' : '▼';
+    const trendHtml = `<div class="kpi-trend ${cls}">${arrow} ${Math.abs(k.trend).toFixed(1)}pp vs prior yr</div>`;
+    div.innerHTML = `<div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>${trendHtml}`;
+    kpiRow.appendChild(div);
+  });
+}
+
+function renderFleetYTDRow(ytdFleetObj, latestYr, priorYr) {
+  const row = document.getElementById('kpiRowFleet');
+  row.innerHTML = '';
+  Object.entries(ytdFleetObj).forEach(([fleet, d]) => {
+    const color   = FLEET_COLORS[fleet];
+    const div     = document.createElement('div');
+    div.className = 'kpi-card';
+    div.style.borderTop = `3px solid ${color}`;
+    const ppCls   = d.pp >= 0 ? 'trend-up' : 'trend-down';
+    const ppArrow = d.pp >= 0 ? '▲' : '▼';
+    div.innerHTML = `
+      <div class="kpi-label" style="color:${color}">${fleet} — YTD ${latestYr}</div>
+      <div class="kpi-value">${d.cur.toFixed(1)}%</div>
+      <div class="kpi-sub">Prior: ${d.prior.toFixed(1)}%</div>
+      <div class="kpi-trend ${ppCls}">${ppArrow} ${Math.abs(d.pp).toFixed(1)}pp vs prior year</div>`;
+    row.appendChild(div);
+  });
+}
+
+function renderFleetCards(fleetDataArr, histYrs) {
+  const container = document.getElementById('fleetCards');
+  container.innerHTML = '';
+  fleetDataArr.forEach(({ fleet, size, vals }) => {
+    const c = FLEET_COLORS[fleet];
+    const trend = vals.length >= 2 ? vals[vals.length-1] - vals[vals.length-2] : 0;
+    const trendColor = trend >= 0 ? '#10b981' : '#ef4444';
+    const trendStr = `${trend >= 0 ? '+' : ''}${trend.toFixed(1)}pp`;
+    const prevYrPair = histYrs.length >= 2 ? `'${histYrs[histYrs.length-2].slice(2)}→'${histYrs[histYrs.length-1].slice(2)}` : '';
+    const barsHtml = histYrs.map((yr, i) => `
+      <div class="bar-row">
+        <div class="bar-row-top">
+          <span class="bar-yr">${yr}</span>
+          <span class="bar-val">${vals[i] != null ? vals[i].toFixed(1) + '%' : '—'}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${Math.min((vals[i]||0)/65*100,100)}%;background:${c}"></div>
+        </div>
+      </div>`).join('');
+    const div = document.createElement('div');
+    div.className = 'fleet-mini';
+    div.style.border = `1px solid ${c}20`;
+    div.style.borderTop = `3px solid ${c}`;
+    div.innerHTML = `
+      <div class="fleet-mini-header">
+        <span class="fleet-name" style="color:${c}">${fleet}</span>
+        <span class="fleet-count">${size} vehicles</span>
+      </div>
+      ${barsHtml}
+      <div class="fleet-footer">
+        <span class="footer-lbl">YoY ${prevYrPair}</span>
+        <span class="footer-val" style="color:${trendColor}">${trendStr}</span>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+function renderVehicleTable(vehicleTTMArr, ttmLabels) {
+  function cellColor(v) {
+    if (v === null || v === undefined) return {bg:'#f8fafc', fg:'#cbd5e1'};
+    const stops = [
+      [0,'#fef9f0','#f59e0b'],[20,'#fef3c7','#d97706'],[35,'#dcfce7','#16a34a'],
+      [50,'#bbf7d0','#15803d'],[65,'#86efac','#166534'],[80,'#4ade80','#14532d'],
+      [100,'#16a34a','#f0fdf4'],
+    ];
+    for (let i = 1; i < stops.length; i++) {
+      if (v <= stops[i][0]) {
+        const t = (v - stops[i-1][0]) / (stops[i][0] - stops[i-1][0]);
+        const lerpColor = (a, b, t) => {
+          const p = c => [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+          const [ar,ag,ab]=p(a),[br,bg,bb]=p(b);
+          return '#'+[ar+(br-ar)*t,ag+(bg-ag)*t,ab+(bb-ab)*t].map(x=>Math.round(x).toString(16).padStart(2,'0')).join('');
+        };
+        return {bg:lerpColor(stops[i-1][1],stops[i][1],t), fg:v>=65?stops[i][2]:'#1a2e1a'};
+      }
+    }
+    return {bg:'#15803d',fg:'#f0fdf4'};
+  }
+
+  const table = document.getElementById('vehicleTable');
+  table.innerHTML = '';
+  const thead = table.createTHead();
+  const hrow  = thead.insertRow();
+  [
+    {t:'Fleet',  s:'padding:8px 10px;text-align:left;color:#fff;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;position:sticky;left:0;z-index:2;min-width:60px;background:#1e293b'},
+    {t:'Vehicle',s:'padding:8px 10px;text-align:left;color:#fff;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;position:sticky;left:60px;z-index:2;min-width:72px;background:#1e293b'},
+  ].forEach(({t,s}) => { const th=document.createElement('th');th.textContent=t;th.style.cssText=s;hrow.appendChild(th); });
+  ttmLabels.forEach(m => {
+    const th=document.createElement('th');th.textContent=m;
+    th.style.cssText='padding:8px 8px;text-align:center;color:#94a3b8;font-size:10px;white-space:nowrap;min-width:52px;background:#1e293b;font-weight:500';
+    hrow.appendChild(th);
+  });
+  const thT=document.createElement('th');thT.textContent='TTM Avg';
+  thT.style.cssText='padding:8px 10px;text-align:center;color:#fff;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;min-width:72px;background:#0f172a;border-left:2px solid #334155;font-weight:700';
+  hrow.appendChild(thT);
+
+  const tbody=table.createTBody();
+  let lastFleet=null;
+  vehicleTTMArr.forEach(row => {
+    const fleetColor=FLEET_COLORS[row.f];
+    if (row.f !== lastFleet) {
+      lastFleet=row.f;
+      const ftr=tbody.insertRow();
+      const fcell=ftr.insertCell();
+      fcell.colSpan=ttmLabels.length+3;
+      fcell.textContent=row.f;
+      fcell.style.cssText=`padding:6px 10px;font-size:11px;font-weight:700;color:${fleetColor};background:${fleetColor}12;border-top:2px solid ${fleetColor}30;letter-spacing:0.08em;font-family:'Sora',sans-serif`;
+    }
+    const tr=tbody.insertRow();
+    const tdF=tr.insertCell();
+    tdF.style.cssText=`padding:6px 10px;color:${fleetColor};font-weight:600;font-size:10px;background:#fff;position:sticky;left:0;z-index:1;border-right:1px solid #f1f5f9;border-bottom:1px solid #f8fafc;white-space:nowrap`;
+    tdF.textContent=row.f;
+    const tdV=tr.insertCell();
+    tdV.style.cssText=`padding:6px 10px;color:#334155;font-weight:500;background:#fff;position:sticky;left:60px;z-index:1;border-right:1px solid #e2e8f0;border-bottom:1px solid #f8fafc;white-space:nowrap`;
+    tdV.textContent=row.v;
+    row.m.forEach(val => {
+      const td=tr.insertCell();
+      if (val===null) {
+        td.textContent='·';
+        td.style.cssText='padding:6px 8px;text-align:center;color:#cbd5e1;background:#f8fafc;border-bottom:1px solid #f8fafc;font-size:13px';
+      } else {
+        const c=cellColor(val);
+        td.textContent=val.toFixed(1)+'%';
+        td.style.cssText=`padding:6px 8px;text-align:center;background:${c.bg};color:${c.fg};font-weight:500;border-bottom:1px solid #f8fafc;border-radius:3px`;
+      }
+    });
+    const tdT=tr.insertCell();
+    if (row.ttm!==null){
+      const c=cellColor(row.ttm);
+      tdT.textContent=row.ttm.toFixed(1)+'%';
+      tdT.style.cssText=`padding:6px 10px;text-align:center;background:${c.bg};color:${c.fg};font-weight:700;font-size:12px;border-left:2px solid #e2e8f0;border-bottom:1px solid #f8fafc`;
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 </script>
 </div>
 </body>
