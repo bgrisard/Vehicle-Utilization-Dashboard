@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #f8fafc; font-family: 'Sora', sans-serif; padding: 32px 112px; min-height: 100vh; color: #0f172a; }
+  body { background: #f8fafc; font-family: 'Sora', sans-serif; padding: 0; min-height: 100vh; color: #0f172a; }
 
   /* ── Header ── */
   .fleet-tags { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
@@ -84,12 +84,21 @@
 <body>
 
 <!-- ── Header ──────────────────────────────────────────────────────────── -->
-<div class="fleet-tags" id="fleetTags"></div>
-<h1>Vehicle Utilization Dashboard</h1>
-<p class="subtitle">57 vehicles (LOCAL · MED · OTR · MINI) &nbsp;·&nbsp; Jan 2023 – Feb 2026 &nbsp;·&nbsp; 5 hrs/day = 100%</p>
+<div style="background:#fff;padding:28px 112px 24px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);border-radius:0">
+  <div class="fleet-tags" id="fleetTags"></div>
+  <h1>Vehicle Utilization Dashboard</h1>
+  <p class="subtitle">57 vehicles (LOCAL · MED · OTR · MINI) &nbsp;·&nbsp; Jan 2023 – Feb 2026 &nbsp;·&nbsp; 5 hrs/day = 100%</p>
+</div>
+
+<div style="padding:0 112px 32px">
 
 <!-- ── KPIs ─────────────────────────────────────────────────────────────── -->
 <div class="kpi-row" id="kpiRow"></div>
+<div style="margin-top:24px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+  <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;font-family:'Sora',sans-serif">YTD by Fleet Group</span>
+  <div style="flex:1;height:1px;background:#e2e8f0"></div>
+</div>
+<div class="kpi-row" id="kpiRowFleet"></div>
 
 <!-- ── YoY chart ────────────────────────────────────────────────────────── -->
 <div class="chart-card">
@@ -120,44 +129,36 @@
   </div>
 </div>
 
-<!-- ── Annual fleet chart ─────────────────────────────────────────────────── -->
-<div class="grid-2">
+
+
+<!-- ── Calendar + Fleet summary row ──────────────────────────────────────── -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;align-items:start">
+
+  <div class="chart-card" style="margin-bottom:0" id="calendarSection">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+      <div>
+        <div class="card-title">Daily Utilization Calendar</div>
+        <div class="card-subtitle">Each cell = one day · Colour intensity = utilization % · Hover for details</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center" id="yearTabsCalendar"></div>
+    </div>
+    <div id="calendarWrap" style="overflow-x:auto;padding-bottom:4px"></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:14px;flex-wrap:wrap">
+      <span style="font-size:10px;color:#94a3b8;font-family:'Sora',sans-serif">Low</span>
+      <div id="legendCells" style="display:flex;gap:3px"></div>
+      <span style="font-size:10px;color:#94a3b8;font-family:'Sora',sans-serif">High</span>
+      <div id="calTooltip" style="margin-left:16px;font-size:11px;color:#475569;font-family:'DM Mono',monospace;min-height:16px"></div>
+    </div>
+  </div>
+
   <div class="chart-card" style="margin-bottom:0">
     <div class="card-header">
-      <div class="card-title">Annual Utilization by Fleet Type</div>
-      <div class="card-subtitle">Grouped by calendar year</div>
+      <div class="card-title">Fleet Breakdown — Annual Performance (2023–2025)</div>
+      <div class="card-subtitle">Year-over-year utilization per fleet type with trend indicator</div>
     </div>
-    <div class="chart-wrap" style="height:280px"><canvas id="annualFleetChart"></canvas></div>
+    <div class="grid-4" id="fleetCards"></div>
   </div>
-  <div></div>
-</div>
 
-
-<!-- ── Calendar heatmap ───────────────────────────────────────────────────── -->
-<div class="chart-card" style="margin-bottom:24px" id="calendarSection">
-  <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
-    <div>
-      <div class="card-title">Daily Utilization Calendar</div>
-      <div class="card-subtitle">Each cell = one day · Colour intensity = utilization % · Hover for details</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center" id="yearTabsCalendar"></div>
-  </div>
-  <div id="calendarWrap" style="overflow-x:auto;padding-bottom:4px"></div>
-  <div style="display:flex;align-items:center;gap:6px;margin-top:14px;flex-wrap:wrap">
-    <span style="font-size:10px;color:#94a3b8;font-family:'Sora',sans-serif">Low</span>
-    <div id="legendCells" style="display:flex;gap:3px"></div>
-    <span style="font-size:10px;color:#94a3b8;font-family:'Sora',sans-serif">High</span>
-    <div id="calTooltip" style="margin-left:16px;font-size:11px;color:#475569;font-family:'DM Mono',monospace;min-height:16px"></div>
-  </div>
-</div>
-
-<!-- ── Fleet summary cards ───────────────────────────────────────────────── -->
-<div class="chart-card" style="margin-top:24px">
-  <div class="card-header">
-    <div class="card-title">Fleet Breakdown — Annual Performance (2023–2025)</div>
-    <div class="card-subtitle">Year-over-year utilization per fleet type with trend indicator</div>
-  </div>
-  <div class="grid-4" id="fleetCards"></div>
 </div>
 
 <p class="methodology">Methodology: vehicle-day = min(Hours ÷ 5, 100%) · Available Days = Fleet Size × Calendar Days · "-" entries = 0%</p>
@@ -1449,6 +1450,17 @@ const ttmPeak = Math.max(...TTM_DATA).toFixed(1);
 const ttmLow  = Math.min(...TTM_DATA).toFixed(1);
 const yoy2324 = (45.88 - 41.72).toFixed(1);
 const yoy2425 = (40.95 - 45.88).toFixed(1);
+const ttmPrior   = 46.05; // Mar 2024 – Feb 2025 rolling avg
+const ttmPP      = (parseFloat(ttmAvg) - ttmPrior).toFixed(1); // pp vs prior TTM
+const ytd2026    = 30.50; // Jan–Feb 2026 avg
+const ytd2025    = 36.37; // Jan–Feb 2025 avg (same period)
+const ytdPP      = (ytd2026 - ytd2025).toFixed(1); // pp vs prior year YTD
+const ytdFleet = {
+  LOCAL: { cur:9.94,  prior:28.07, pp:-18.1 },
+  MED:   { cur:25.51, prior:34.14, pp:-8.6  },
+  OTR:   { cur:44.12, prior:48.26, pp:-4.1  },
+  MINI:  { cur:37.61, prior:33.55, pp:+4.1  },
+};
 
 // ── Shared chart defaults ────────────────────────────────────────────────────
 Chart.defaults.font.family = "'DM Mono', monospace";
@@ -1485,18 +1497,15 @@ Object.keys(FLEET_COLORS).forEach(f => {
 
 // ── KPI cards ────────────────────────────────────────────────────────────────
 const kpiData = [
-  { label:"TTM Utilization",  value:`${ttmAvg}%`, sub:"Mar 2025 – Feb 2026",      accent:"#6366f1" },
-  { label:"2025 Full Year",   value:"41.0%",       sub:`${+yoy2425 >= 0 ? "+" : ""}${yoy2425}pp vs 2024`,    accent:"#10b981", trend:+yoy2425 },
-  { label:"2024 Full Year",   value:"45.9%",       sub:`+${yoy2324}pp vs 2023`,    accent:"#f59e0b", trend:+yoy2324 },
-  { label:"2023 Full Year",   value:"41.7%",       sub:"Baseline year",            accent:"#6366f1" },
-  { label:"TTM Peak (Rolling)", value:`${ttmPeak}%`, sub:"Mar 2025 (rolling 12-mo)", accent:"#ef4444" },
-  { label:"TTM Low (Rolling)",  value:`${ttmLow}%`,  sub:"Feb 2026 (rolling 12-mo)", accent:"#94a3b8" },
+  { label:"YTD 2026",           value:`${ytd2026.toFixed(1)}%`, sub:`${+ytdPP >= 0 ? "+" : ""}${ytdPP}pp vs Jan–Feb 2025`, trend:+ytdPP },
+  { label:"TTM Utilization",    value:`${ttmAvg}%`,   sub:`${+ttmPP >= 0 ? "+" : ""}${ttmPP}pp vs Mar '24–Feb '25`, trend:+ttmPP },
+  { label:"2025 Full Year",     value:"41.0%",         sub:`${+yoy2425 >= 0 ? "+" : ""}${yoy2425}pp vs 2024`,         trend:+yoy2425 },
 ];
 const kpiRow = document.getElementById('kpiRow');
 kpiData.forEach(k => {
   const div = document.createElement('div');
   div.className = 'kpi-card';
-  div.style.borderTop = `3px solid ${k.accent}`;
+  div.style.borderTop = `3px solid #e2e8f0`;
   let trendHtml = '';
   if (k.trend !== undefined) {
     const cls = k.trend >= 0 ? 'trend-up' : 'trend-down';
@@ -1507,6 +1516,23 @@ kpiData.forEach(k => {
     <div class="kpi-value">${k.value}</div>
     <div class="kpi-sub">${k.sub}</div>${trendHtml}`;
   kpiRow.appendChild(div);
+});
+
+// ── Fleet YTD KPI row ────────────────────────────────────────────────────────
+const fleetKpiRow = document.getElementById('kpiRowFleet');
+Object.entries(ytdFleet).forEach(([fleet, d]) => {
+  const color = FLEET_COLORS[fleet];
+  const div = document.createElement('div');
+  div.className = 'kpi-card';
+  div.style.borderTop = `3px solid ${color}`;
+  const ppCls   = d.pp >= 0 ? 'trend-up' : 'trend-down';
+  const ppArrow = d.pp >= 0 ? '▲' : '▼';
+  div.innerHTML = `
+    <div class="kpi-label" style="color:${color}">${fleet} — YTD 2026</div>
+    <div class="kpi-value">${d.cur.toFixed(1)}%</div>
+    <div class="kpi-sub">Jan–Feb 2026 · Prior: ${d.prior.toFixed(1)}%</div>
+    <div class="kpi-trend ${ppCls}">${ppArrow} ${Math.abs(d.pp).toFixed(1)}pp vs Jan–Feb 2025</div>`;
+  fleetKpiRow.appendChild(div);
 });
 
 // ── TTM subtitle ─────────────────────────────────────────────────────────────
@@ -1668,33 +1694,6 @@ const ttmChart = new Chart(ttmCtx, {
   }
 });
 
-// ── Annual fleet bar chart ───────────────────────────────────────────────────
-const afCtx = document.getElementById('annualFleetChart').getContext('2d');
-new Chart(afCtx, {
-  type: 'bar',
-  data: {
-    labels: ANNUAL_FLEET.years,
-    datasets: Object.keys(FLEET_COLORS).map(f => ({
-      label: f,
-      data: ANNUAL_FLEET[f],
-      backgroundColor: FLEET_COLORS[f],
-      borderRadius: 4,
-      borderSkipped: false,
-    }))
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    interaction: { mode:'index', intersect:false },
-    plugins: {
-      legend: {
-        labels: { color:'#64748b', font:{ family:"'Sora',sans-serif", size:11 },
-          boxWidth:10, boxHeight:10, borderRadius:5, useBorderRadius:true }
-      },
-      tooltip: tooltipPlugin()
-    },
-    scales: { x:{ ...scaleDefaults }, y:{ ...yScalePct } }
-  }
-});
 
 // ── TTM fleet line chart ──────────────────────────────────────────────────────
 const activeFleets = { LOCAL:true, MED:true, OTR:true, MINI:true };
@@ -2091,5 +2090,6 @@ FLEET_DATA.forEach(({ fleet, size, vals }) => {
 })();
 
 </script>
+</div>
 </body>
 </html>
