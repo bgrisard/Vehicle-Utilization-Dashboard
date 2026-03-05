@@ -4919,7 +4919,6 @@ Object.keys(FLEET_COLORS).forEach(f => {
 const kpiData = [
   { label:"YTD 2026",           value:`${ytd2026.toFixed(1)}%`, sub:`${+ytdPP >= 0 ? "+" : ""}${ytdPP}pp vs Jan–Feb 2025`, trend:+ytdPP },
   { label:"TTM Utilization",    value:`${ttmAvg}%`,   sub:`${+ttmPP >= 0 ? "+" : ""}${ttmPP}pp vs Mar '24–Feb '25`, trend:+ttmPP },
-  { label:"2025 Full Year",     value:"40.4%",         sub:`${+yoy2425 >= 0 ? "+" : ""}${yoy2425}pp vs 2024`,         trend:+yoy2425 },
 ];
 const kpiRow = document.getElementById('kpiRow');
 kpiData.forEach(k => {
@@ -5382,8 +5381,6 @@ function renderKPIRow(cfg) {
       sub:`${fmt(cfg.ytdPP)}pp vs ${cfg.ytdPriorYear}`, trend:cfg.ytdPP },
     { label:`TTM Utilization`,         value:`${cfg.ttmAvg.toFixed(1)}%`,
       sub:`${fmt(cfg.ttmPP)}pp vs ${cfg.ttmPriorLabel}`, trend:cfg.ttmPP },
-    { label:`${cfg.fullYear} Full Year`, value:`${cfg.fullYearVal.toFixed(1)}%`,
-      sub:`${fmt(cfg.fullYearPP)}pp vs ${cfg.prevYear}`, trend:cfg.fullYearPP },
   ];
   cards.forEach(k => {
     const div = document.createElement('div');
@@ -5708,7 +5705,6 @@ function applyLiveMetrics(mt) {
   const kpiRow=document.getElementById('kpiRow'); kpiRow.innerHTML='';
   [{label:`YTD ${latestYr}`,value:`${ytdCur.toFixed(1)}%`,sub:`${fmt(ytdPP)}pp vs ${prevYr}`,trend:ytdPP},
    {label:`TTM Utilization`,value:`${ttmCurrent.toFixed(1)}%`,sub:`${fmt(ttmPP)}pp vs ${ttmPriorLabel}`,trend:ttmPP},
-   {label:`${latestYr} Full Year`,value:`${annual[latestYr].toFixed(1)}%`,sub:`${fmt(yoyLatest)}pp vs ${prevYr}`,trend:yoyLatest}
   ].forEach(k=>{
     const div=document.createElement('div'); div.className='kpi-card'; div.style.borderTop='3px solid #e2e8f0';
     const cls=k.trend>=0?'trend-up':'trend-down', arr=k.trend>=0?'▲':'▼';
