@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+<!DrenderKPIColumns();
+OCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -30,6 +31,24 @@
   .kpi-trend { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; margin-top: 5px; }
   .trend-up   { color: #10b981; }
   .trend-down { color: #ef4444; }
+
+  /* ── Horizontal KPI card (label left, metrics right) ── */
+  .kpi-h {
+    background:#fff; border:1px solid #f1f5f9; border-radius:12px;
+    padding:14px 18px; display:flex; align-items:center; gap:16px;
+    box-shadow:0 1px 3px #0000000a;
+  }
+  .kpi-h.overall { border-radius:12px; }
+  .kpi-h-label-block { display:flex; flex-direction:column; gap:3px; min-width:90px; }
+  .kpi-h-fleet-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .kpi-h-name { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; font-family:'DM Mono',monospace; }
+  .kpi-h-sublabel { font-size:9px; color:#94a3b8; letter-spacing:0.06em; text-transform:uppercase; }
+  .kpi-h-divider { width:1px; height:36px; background:#f1f5f9; flex-shrink:0; }
+  .kpi-h-metrics { display:flex; flex-direction:column; gap:2px; flex:1; }
+  .kpi-h-value { font-family:'DM Mono',monospace; font-size:22px; font-weight:700; color:#0f172a; line-height:1; }
+  .kpi-h-value.overall { font-size:26px; }
+  .kpi-h-pp { font-size:11px; font-weight:600; font-family:'DM Mono',monospace; }
+  .kpi-h-prior { font-size:10px; color:#94a3b8; }
 
   /* ── Chart cards ── */
   .chart-card {
@@ -94,12 +113,33 @@
 <div style="padding:0 224px 32px">
 
 <!-- ── KPIs ─────────────────────────────────────────────────────────────── -->
-<div class="kpi-row" id="kpiRow"></div>
-<div style="margin-top:24px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
-  <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;font-family:'Sora',sans-serif">YTD by Fleet Group</span>
-  <div style="flex:1;height:1px;background:#e2e8f0"></div>
+<div style="display:grid;grid-template-columns:1fr 2px 1fr;gap:0;margin-bottom:24px" id="kpiPanels">
+
+  <!-- Left: YTD column -->
+  <div style="padding-right:28px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6366f1;font-family:'DM Mono',monospace">YTD</span>
+      <div style="flex:1;height:1.5px;background:linear-gradient(to right,#6366f140,transparent)"></div>
+    </div>
+    <div id="kpiColYTD" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+
+  <!-- Divider -->
+  <div style="background:linear-gradient(to bottom,transparent,#e2e8f0 20%,#e2e8f0 80%,transparent);width:2px;margin:0 4px"></div>
+
+  <!-- Right: TTM column -->
+  <div style="padding-left:28px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#10b981;font-family:'DM Mono',monospace">TTM</span>
+      <div style="flex:1;height:1.5px;background:linear-gradient(to right,#10b98140,transparent)"></div>
+    </div>
+    <div id="kpiColTTM" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+
 </div>
-<div class="kpi-row" id="kpiRowFleet"></div>
+<!-- legacy IDs kept for compatibility -->
+<div id="kpiRow" style="display:none"></div>
+<div id="kpiRowFleet" style="display:none"></div>
 
 <!-- ── YoY chart ────────────────────────────────────────────────────────── -->
 <div class="chart-card">
@@ -1451,7 +1491,8 @@ const FLEET_DATA = [
 
 const yoy2324 = (43.82 - 42.37).toFixed(1);
 const yoy2425 = (40.4 - 43.82).toFixed(1);
-const ttmPrior   = 43.81; // Mar '24 – Feb '25
+const ttmPrior      = 43.81; // Mar '24 – Feb '25
+const ttmPriorLabel = "Mar '24 – Feb '25";
 const ttmAvg     = TTM_DATA[TTM_DATA.length - 1].toFixed(1);
 const ttmPeak    = Math.max(...TTM_DATA).toFixed(1);
 const ttmLow     = Math.min(...TTM_DATA).toFixed(1);
@@ -4915,44 +4956,54 @@ Object.keys(FLEET_COLORS).forEach(f => {
   tagsEl.appendChild(span);
 });
 
-// ── KPI cards ────────────────────────────────────────────────────────────────
-const kpiData = [
-  { label:"YTD 2026",           value:`${ytd2026.toFixed(1)}%`, sub:`${+ytdPP >= 0 ? "+" : ""}${ytdPP}pp vs Jan–Feb 2025`, trend:+ytdPP },
-  { label:"TTM Utilization",    value:`${ttmAvg}%`,   sub:`${+ttmPP >= 0 ? "+" : ""}${ttmPP}pp vs Mar '24–Feb '25`, trend:+ttmPP },
-];
-const kpiRow = document.getElementById('kpiRow');
-kpiData.forEach(k => {
-  const div = document.createElement('div');
-  div.className = 'kpi-card';
-  div.style.borderTop = `3px solid #e2e8f0`;
-  let trendHtml = '';
-  if (k.trend !== undefined) {
-    const cls = k.trend >= 0 ? 'trend-up' : 'trend-down';
-    const arrow = k.trend >= 0 ? '▲' : '▼';
-    trendHtml = `<div class="kpi-trend ${cls}">${arrow} ${Math.abs(k.trend).toFixed(1)}pp vs prior yr</div>`;
-  }
-  div.innerHTML = `<div class="kpi-label">${k.label}</div>
-    <div class="kpi-value">${k.value}</div>
-    <div class="kpi-sub">${k.sub}</div>${trendHtml}`;
-  kpiRow.appendChild(div);
-});
+// ── KPI columns (YTD left, TTM right) ────────────────────────────────────────
+function buildKpiCard(name, sublabel, value, pp, priorLabel, color, isOverall) {
+  const ppCls = pp >= 0 ? '#10b981' : '#ef4444';
+  const arr   = pp >= 0 ? '▲' : '▼';
+  const dot   = color ? `<div class="kpi-h-fleet-dot" style="background:${color}"></div>` : '';
+  const card  = document.createElement('div');
+  card.className = 'kpi-h' + (isOverall ? ' overall' : '');
+  if (isOverall) card.style.cssText = 'background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:16px;box-shadow:0 2px 8px #0000000f;';
+  card.innerHTML = `
+    <div class="kpi-h-label-block">
+      ${dot}
+      <span class="kpi-h-name" style="color:${color||'#0f172a'}">${name}</span>
+      <span class="kpi-h-sublabel">${sublabel}</span>
+    </div>
+    <div class="kpi-h-divider"></div>
+    <div class="kpi-h-metrics">
+      <span class="kpi-h-value${isOverall?' overall':''}">${value}</span>
+      <span class="kpi-h-pp" style="color:${ppCls}">${arr} ${Math.abs(pp).toFixed(1)}pp</span>
+      <span class="kpi-h-prior">${priorLabel}</span>
+    </div>`;
+  return card;
+}
 
-// ── Fleet YTD KPI row ────────────────────────────────────────────────────────
-const fleetKpiRow = document.getElementById('kpiRowFleet');
-Object.entries(ytdFleet).forEach(([fleet, d]) => {
-  const color = FLEET_COLORS[fleet];
-  const div = document.createElement('div');
-  div.className = 'kpi-card';
-  div.style.borderTop = `3px solid ${color}`;
-  const ppCls   = d.pp >= 0 ? 'trend-up' : 'trend-down';
-  const ppArrow = d.pp >= 0 ? '▲' : '▼';
-  div.innerHTML = `
-    <div class="kpi-label" style="color:${color}">${fleet} — YTD 2026</div>
-    <div class="kpi-value">${d.cur.toFixed(1)}%</div>
-    <div class="kpi-sub">Jan–Feb 2026 · Prior: ${d.prior.toFixed(1)}%</div>
-    <div class="kpi-trend ${ppCls}">${ppArrow} ${Math.abs(d.pp).toFixed(1)}pp vs Jan–Feb 2025</div>`;
-  fleetKpiRow.appendChild(div);
-});
+function renderKPIColumns() {
+  const ytdCol = document.getElementById('kpiColYTD');
+  const ttmCol = document.getElementById('kpiColTTM');
+  if (!ytdCol || !ttmCol) return;
+  ytdCol.innerHTML = ''; ttmCol.innerHTML = '';
+
+  // Overall YTD
+  ytdCol.appendChild(buildKpiCard('YTD 2026', 'Jan–Feb overall', `${ytd2026.toFixed(1)}%`, +ytdPP, `vs Jan–Feb 2025`, null, true));
+  // Fleet YTD
+  Object.entries(ytdFleet).forEach(([fleet, d]) => {
+    ytdCol.appendChild(buildKpiCard(fleet, `YTD 2026`, `${d.cur.toFixed(1)}%`, d.pp, `Prior: ${d.prior.toFixed(1)}%`, FLEET_COLORS[fleet], false));
+  });
+
+  // Overall TTM
+  const ttmCur = parseFloat(ttmAvg);
+  ttmCol.appendChild(buildKpiCard('TTM Utilization', "Mar '25\u2013Feb '26", `${ttmAvg}%`, +ttmPP, `vs ${ttmPriorLabel||"prior yr"}`, null, true));
+  // Fleet TTM (rolling avg of last 12 months per fleet)
+  ['LOCAL','MED','OTR','MINI'].forEach((fleet, i) => {
+    const fleetTTM = TTM_FLEET_ROLLING[fleet];
+    const cur  = fleetTTM ? fleetTTM[fleetTTM.length-1] : null;
+    const prev = fleetTTM ? fleetTTM[0] : null;
+    const pp   = (cur != null && prev != null) ? cur - prev : 0;
+    ttmCol.appendChild(buildKpiCard(fleet, 'TTM (rolling)', cur != null ? cur.toFixed(1)+'%' : '—', pp, `vs 12mo ago`, FLEET_COLORS[fleet], false));
+  });
+}
 
 // ── TTM subtitle ─────────────────────────────────────────────────────────────
 document.getElementById('ttmSubtitle').textContent = `Rolling 12-month avg ending each month (Mar 2025 – Feb 2026) · Overall + fleet breakdown`;
@@ -5369,51 +5420,8 @@ renderVehicleTable(VEHICLE_TTM, VEH_MONTHS);
 // ── Render functions (callable on CSV refresh) ──────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function renderKPIRow(cfg) {
-  // cfg: { ytdYear, ytdVal, ytdPP, ytdPriorYear,
-  //        ttmAvg, ttmPP, ttmPriorLabel,
-  //        fullYear, fullYearVal, fullYearPP, prevYear }
-  const kpiRow = document.getElementById('kpiRow');
-  kpiRow.innerHTML = '';
-  const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
-  const cards = [
-    { label:`YTD ${cfg.ytdYear}`,     value:`${cfg.ytdVal.toFixed(1)}%`,
-      sub:`${fmt(cfg.ytdPP)}pp vs ${cfg.ytdPriorYear}`, trend:cfg.ytdPP },
-    { label:`TTM Utilization`,         value:`${cfg.ttmAvg.toFixed(1)}%`,
-      sub:`${fmt(cfg.ttmPP)}pp vs ${cfg.ttmPriorLabel}`, trend:cfg.ttmPP },
-  ];
-  cards.forEach(k => {
-    const div = document.createElement('div');
-    div.className = 'kpi-card';
-    div.style.borderTop = '3px solid #e2e8f0';
-    const cls   = k.trend >= 0 ? 'trend-up' : 'trend-down';
-    const arrow = k.trend >= 0 ? '▲' : '▼';
-    const trendHtml = `<div class="kpi-trend ${cls}">${arrow} ${Math.abs(k.trend).toFixed(1)}pp vs prior yr</div>`;
-    div.innerHTML = `<div class="kpi-label">${k.label}</div>
-      <div class="kpi-value">${k.value}</div>
-      <div class="kpi-sub">${k.sub}</div>${trendHtml}`;
-    kpiRow.appendChild(div);
-  });
-}
-
-function renderFleetYTDRow(ytdFleetObj, latestYr, priorYr) {
-  const row = document.getElementById('kpiRowFleet');
-  row.innerHTML = '';
-  Object.entries(ytdFleetObj).forEach(([fleet, d]) => {
-    const color   = FLEET_COLORS[fleet];
-    const div     = document.createElement('div');
-    div.className = 'kpi-card';
-    div.style.borderTop = `3px solid ${color}`;
-    const ppCls   = d.pp >= 0 ? 'trend-up' : 'trend-down';
-    const ppArrow = d.pp >= 0 ? '▲' : '▼';
-    div.innerHTML = `
-      <div class="kpi-label" style="color:${color}">${fleet} — YTD ${latestYr}</div>
-      <div class="kpi-value">${d.cur.toFixed(1)}%</div>
-      <div class="kpi-sub">Prior: ${d.prior.toFixed(1)}%</div>
-      <div class="kpi-trend ${ppCls}">${ppArrow} ${Math.abs(d.pp).toFixed(1)}pp vs prior year</div>`;
-    row.appendChild(div);
-  });
-}
+function renderKPIRow(cfg) { /* replaced by renderKPIColumns */ }
+function renderFleetYTDRow(ytdFleetObj, latestYr, priorYr) { /* replaced by renderKPIColumns */ }
 
 function renderFleetCards(fleetDataArr, histYrs) {
   const container = document.getElementById('fleetCards');
@@ -5702,24 +5710,33 @@ function applyLiveMetrics(mt) {
   const ttmSubEl=document.getElementById('ttmSubtitle');
   if(ttmSubEl) ttmSubEl.textContent=`Rolling 12-month avg ending each month (${ttmLabels[0]} – ${ttmLabels[ttmLabels.length-1]}) · Overall + fleet breakdown`;
 
-  const kpiRow=document.getElementById('kpiRow'); kpiRow.innerHTML='';
-  [{label:`YTD ${latestYr}`,value:`${ytdCur.toFixed(1)}%`,sub:`${fmt(ytdPP)}pp vs ${prevYr}`,trend:ytdPP},
-   {label:`TTM Utilization`,value:`${ttmCurrent.toFixed(1)}%`,sub:`${fmt(ttmPP)}pp vs ${ttmPriorLabel}`,trend:ttmPP},
-  ].forEach(k=>{
-    const div=document.createElement('div'); div.className='kpi-card'; div.style.borderTop='3px solid #e2e8f0';
-    const cls=k.trend>=0?'trend-up':'trend-down', arr=k.trend>=0?'▲':'▼';
-    div.innerHTML=`<div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub">${k.sub}</div><div class="kpi-trend ${cls}">${arr} ${Math.abs(k.trend).toFixed(1)}pp vs prior yr</div>`;
-    kpiRow.appendChild(div);
-  });
+  // ── KPI columns ──────────────────────────────────────────────────────────────
+  const ytdCol = document.getElementById('kpiColYTD');
+  const ttmCol = document.getElementById('kpiColTTM');
+  if (ytdCol && ttmCol) {
+    ytdCol.innerHTML = ''; ttmCol.innerHTML = '';
 
-  const fleetRow=document.getElementById('kpiRowFleet'); fleetRow.innerHTML='';
-  Object.entries(ytdFleetNew).forEach(([fleet,d])=>{
-    const color=FLEET_COLORS[fleet], div=document.createElement('div');
-    div.className='kpi-card'; div.style.borderTop=`3px solid ${color}`;
-    const cls=d.pp>=0?'trend-up':'trend-down', arr=d.pp>=0?'▲':'▼';
-    div.innerHTML=`<div class="kpi-label" style="color:${color}">${fleet} — YTD ${latestYr}</div><div class="kpi-value">${d.cur.toFixed(1)}%</div><div class="kpi-sub">Prior: ${d.prior.toFixed(1)}%</div><div class="kpi-trend ${cls}">${arr} ${Math.abs(d.pp).toFixed(1)}pp vs prior year</div>`;
-    fleetRow.appendChild(div);
-  });
+    // Overall YTD
+    ytdCol.appendChild(buildKpiCard(`YTD ${latestYr}`, `Jan–${MN_LIVE[latestMo-1]} overall`,
+      `${ytdCur.toFixed(1)}%`, ytdPP, `vs ${prevYr} same period`, null, true));
+    // Fleet YTD
+    Object.entries(ytdFleetNew).forEach(([fleet, d]) => {
+      ytdCol.appendChild(buildKpiCard(fleet, `YTD ${latestYr}`,
+        `${d.cur.toFixed(1)}%`, d.pp, `Prior: ${d.prior.toFixed(1)}%`, FLEET_COLORS[fleet], false));
+    });
+
+    // Overall TTM
+    ttmCol.appendChild(buildKpiCard('TTM Utilization', `${ttmLabels[0]}–${ttmLabels[ttmLabels.length-1]}`,
+      `${ttmCurrent.toFixed(1)}%`, ttmPP, `vs ${ttmPriorLabel}`, null, true));
+    // Fleet TTM
+    ['LOCAL','MED','OTR','MINI'].forEach(fleet => {
+      const fr = ttmFleetRolling[fleet] || [];
+      const cur = fr.length ? fr[fr.length-1] : null;
+      const pp  = fr.length >= 2 ? cur - fr[0] : 0;
+      ttmCol.appendChild(buildKpiCard(fleet, 'TTM (rolling)',
+        cur != null ? cur.toFixed(1)+'%' : '—', pp, `vs 12mo ago`, FLEET_COLORS[fleet], false));
+    });
+  }
 
   yoyChart.data.datasets=years.map(yr=>({label:String(yr),data:monthlyByYear[yr]||Array(12).fill(null),borderColor:YEAR_COLORS[yr]||'#6366f1',backgroundColor:'transparent',borderWidth:yr===latestYr?3:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:YEAR_COLORS[yr]||'#6366f1',pointBorderColor:'#fff',pointBorderWidth:1.5,tension:0.3,spanGaps:false}));
   yoyChart.update();
