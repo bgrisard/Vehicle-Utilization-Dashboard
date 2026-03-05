@@ -121,7 +121,7 @@ OCTYPE html>
       <span style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6366f1;font-family:'DM Mono',monospace">YTD</span>
       <div style="flex:1;height:1.5px;background:linear-gradient(to right,#6366f140,transparent)"></div>
     </div>
-    <div id="kpiColYTD" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div id="kpiColYTD" style="display:flex;flex-direction:column;gap:10px"><div id="kpiColYTDFleet" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
   </div>
 
   <!-- Divider -->
@@ -133,7 +133,7 @@ OCTYPE html>
       <span style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#10b981;font-family:'DM Mono',monospace">TTM</span>
       <div style="flex:1;height:1.5px;background:linear-gradient(to right,#10b98140,transparent)"></div>
     </div>
-    <div id="kpiColTTM" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div id="kpiColTTM" style="display:flex;flex-direction:column;gap:10px"><div id="kpiColTTMFleet" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
   </div>
 
 </div>
@@ -4957,6 +4957,20 @@ Object.keys(FLEET_COLORS).forEach(f => {
 });
 
 // ── KPI columns (YTD left, TTM right) ────────────────────────────────────────
+function buildFleetMiniCard(name, sublabel, value, pp, priorLabel) {
+  const color = FLEET_COLORS[name] || '#94a3b8';
+  const ppColor = pp >= 0 ? '#10b981' : '#ef4444';
+  const arr = pp >= 0 ? '▲' : '▼';
+  const card = document.createElement('div');
+  card.style.cssText = `flex:1;min-width:0;background:#fff;border:1px solid ${color}25;border-top:3px solid ${color};border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px #0000000a;`;
+  card.innerHTML = `
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:${color};font-family:'DM Mono',monospace">${name}</div>
+    <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:#0f172a;margin:4px 0 2px;line-height:1">${value}</div>
+    <div style="font-size:10px;font-weight:600;color:${ppColor};font-family:'DM Mono',monospace">${arr} ${Math.abs(pp).toFixed(1)}pp</div>
+    <div style="font-size:9px;color:#94a3b8;margin-top:1px">${priorLabel}</div>`;
+  return card;
+}
+
 function buildKpiCard(name, sublabel, value, pp, priorLabel, color, isOverall) {
   const ppCls = pp >= 0 ? '#10b981' : '#ef4444';
   const arr   = pp >= 0 ? '▲' : '▼';
@@ -4983,25 +4997,32 @@ function renderKPIColumns() {
   const ytdCol = document.getElementById('kpiColYTD');
   const ttmCol = document.getElementById('kpiColTTM');
   if (!ytdCol || !ttmCol) return;
-  ytdCol.innerHTML = ''; ttmCol.innerHTML = '';
+  const ytdFleetRow = document.getElementById('kpiColYTDFleet');
+  const ttmFleetRow = document.getElementById('kpiColTTMFleet');
+
+  // Clear overall cards only (fleet rows are preserved as child divs)
+  Array.from(ytdCol.children).forEach(c => { if (c.id !== 'kpiColYTDFleet') c.remove(); });
+  Array.from(ttmCol.children).forEach(c => { if (c.id !== 'kpiColTTMFleet') c.remove(); });
 
   // Overall YTD
-  ytdCol.appendChild(buildKpiCard('YTD 2026', 'Jan–Feb overall', `${ytd2026.toFixed(1)}%`, +ytdPP, `vs Jan–Feb 2025`, null, true));
-  // Fleet YTD
+  ytdCol.insertBefore(buildKpiCard('YTD 2026', 'Jan–Feb overall', `${ytd2026.toFixed(1)}%`, +ytdPP, `vs Jan–Feb 2025`, null, true), ytdFleetRow);
+  // Fleet YTD — single row
+  ytdFleetRow.innerHTML = '';
   Object.entries(ytdFleet).forEach(([fleet, d]) => {
-    ytdCol.appendChild(buildKpiCard(fleet, `YTD 2026`, `${d.cur.toFixed(1)}%`, d.pp, `Prior: ${d.prior.toFixed(1)}%`, FLEET_COLORS[fleet], false));
+    ytdFleetRow.appendChild(buildFleetMiniCard(fleet, 'YTD 2026', `${d.cur.toFixed(1)}%`, d.pp, `Prior: ${d.prior.toFixed(1)}%`));
   });
 
   // Overall TTM
   const ttmCur = parseFloat(ttmAvg);
   ttmCol.appendChild(buildKpiCard('TTM Utilization', "Mar '25\u2013Feb '26", `${ttmAvg}%`, +ttmPP, `vs ${ttmPriorLabel||"prior yr"}`, null, true));
-  // Fleet TTM (rolling avg of last 12 months per fleet)
-  ['LOCAL','MED','OTR','MINI'].forEach((fleet, i) => {
+  // Fleet TTM — single row
+  ttmFleetRow.innerHTML = '';
+  ['LOCAL','MED','OTR','MINI'].forEach(fleet => {
     const fleetTTM = TTM_FLEET_ROLLING[fleet];
     const cur  = fleetTTM ? fleetTTM[fleetTTM.length-1] : null;
     const prev = fleetTTM ? fleetTTM[0] : null;
     const pp   = (cur != null && prev != null) ? cur - prev : 0;
-    ttmCol.appendChild(buildKpiCard(fleet, 'TTM (rolling)', cur != null ? cur.toFixed(1)+'%' : '—', pp, `vs 12mo ago`, FLEET_COLORS[fleet], false));
+    ttmFleetRow.appendChild(buildFleetMiniCard(fleet, 'TTM rolling', cur != null ? cur.toFixed(1)+'%' : '—', pp, `vs 12mo ago`));
   });
 }
 
@@ -5716,25 +5737,30 @@ function applyLiveMetrics(mt) {
   if (ytdCol && ttmCol) {
     ytdCol.innerHTML = ''; ttmCol.innerHTML = '';
 
+    const ytdFleetRow2 = document.getElementById('kpiColYTDFleet');
+    const ttmFleetRow2 = document.getElementById('kpiColTTMFleet');
+
     // Overall YTD
-    ytdCol.appendChild(buildKpiCard(`YTD ${latestYr}`, `Jan–${MN_LIVE[latestMo-1]} overall`,
-      `${ytdCur.toFixed(1)}%`, ytdPP, `vs ${prevYr} same period`, null, true));
-    // Fleet YTD
+    ytdCol.insertBefore(buildKpiCard(`YTD ${latestYr}`, `Jan–${MN_LIVE[latestMo-1]} overall`,
+      `${ytdCur.toFixed(1)}%`, ytdPP, `vs ${prevYr} same period`, null, true), ytdFleetRow2);
+    // Fleet YTD — single row
+    ytdFleetRow2.innerHTML = '';
     Object.entries(ytdFleetNew).forEach(([fleet, d]) => {
-      ytdCol.appendChild(buildKpiCard(fleet, `YTD ${latestYr}`,
-        `${d.cur.toFixed(1)}%`, d.pp, `Prior: ${d.prior.toFixed(1)}%`, FLEET_COLORS[fleet], false));
+      ytdFleetRow2.appendChild(buildFleetMiniCard(fleet, `YTD ${latestYr}`,
+        `${d.cur.toFixed(1)}%`, d.pp, `Prior: ${d.prior.toFixed(1)}%`));
     });
 
     // Overall TTM
-    ttmCol.appendChild(buildKpiCard('TTM Utilization', `${ttmLabels[0]}–${ttmLabels[ttmLabels.length-1]}`,
-      `${ttmCurrent.toFixed(1)}%`, ttmPP, `vs ${ttmPriorLabel}`, null, true));
-    // Fleet TTM
+    ttmCol.insertBefore(buildKpiCard('TTM Utilization', `${ttmLabels[0]}–${ttmLabels[ttmLabels.length-1]}`,
+      `${ttmCurrent.toFixed(1)}%`, ttmPP, `vs ${ttmPriorLabel}`, null, true), ttmFleetRow2);
+    // Fleet TTM — single row
+    ttmFleetRow2.innerHTML = '';
     ['LOCAL','MED','OTR','MINI'].forEach(fleet => {
       const fr = ttmFleetRolling[fleet] || [];
       const cur = fr.length ? fr[fr.length-1] : null;
       const pp  = fr.length >= 2 ? cur - fr[0] : 0;
-      ttmCol.appendChild(buildKpiCard(fleet, 'TTM (rolling)',
-        cur != null ? cur.toFixed(1)+'%' : '—', pp, `vs 12mo ago`, FLEET_COLORS[fleet], false));
+      ttmFleetRow2.appendChild(buildFleetMiniCard(fleet, 'TTM rolling',
+        cur != null ? cur.toFixed(1)+'%' : '—', pp, `vs 12mo ago`));
     });
   }
 
