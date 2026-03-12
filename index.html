@@ -117,17 +117,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px}
 </div>
 
 <!-- ── Calendar + Fleet Summary ──────────────────────────────────────────────── -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;align-items:start">
-  <div class="chart-card" style="margin-bottom:0" id="calendarSection">
-    <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
-      <div>
-        <div class="card-title">Daily Utilization Calendar</div>
-        <div class="card-subtitle">Each cell = one day · Hover for details</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center" id="yearTabsCalendar"></div>
-    </div>
-    <div id="calendarGrid"></div>
-  </div>
+<div style="margin-bottom:24px">
+
   <div class="chart-card" style="margin-bottom:0">
     <div class="card-header">
       <div class="card-title">Fleet Performance Summary</div>
@@ -5004,58 +4995,6 @@ function renderFleetCards(dataArr, histYrs) {
 }
 renderFleetCards(FLEET_DATA, HIST_YRSF);
 
-// ── Calendar ─────────────────────────────────────────────────────────────────
-window._DAILY_UTIL = DAILY_UTIL;
-window._calActiveYear = '2026';
-
-window.buildCalTabs = function(years) {
-  const wrap=document.getElementById('yearTabsCalendar'); if(!wrap) return; wrap.innerHTML='';
-  years.forEach(yr=>{
-    const btn=document.createElement('button');
-    btn.textContent=yr; btn.dataset.yr=yr;
-    const isActive=yr===window._calActiveYear;
-    btn.style.cssText='padding:4px 12px;border-radius:6px;font-size:11px;font-family:DM Mono,monospace;font-weight:600;cursor:pointer;border:1.5px solid '+(isActive?'#6366f1':'#e2e8f0')+';background:'+(isActive?'#6366f1':'#fff')+';color:'+(isActive?'#fff':'#64748b');
-    btn.addEventListener('click',()=>{ window._calActiveYear=yr; window.buildCalendar(yr); window.buildCalTabs(years); });
-    wrap.appendChild(btn);
-  });
-};
-
-window.buildCalendar = function(year) {
-  const grid=document.getElementById('calendarGrid'); if(!grid) return; grid.innerHTML='';
-  const byDate={};
-  (window._DAILY_UTIL||[]).forEach(r=>{ byDate[r.d]=r.v; });
-  for(let mo=0;mo<12;mo++) {
-    const ym=year+'-'+(mo+1).toString().padStart(2,'0');
-    const hasDays=(window._DAILY_UTIL||[]).some(r=>r.d.startsWith(ym));
-    if(!hasDays) continue;
-    const moWrap=document.createElement('div');
-    moWrap.style.cssText='margin-bottom:12px';
-    moWrap.innerHTML='<div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#64748b;margin-bottom:6px;font-family:DM Mono,monospace">'+MN[mo].toUpperCase()+'</div>';
-    const cellRow=document.createElement('div');
-    cellRow.style.cssText='display:flex;flex-wrap:wrap;gap:2px';
-    const d=new Date(year,mo,1);
-    while(d.getMonth()===mo) {
-      const ds=d.toISOString().slice(0,10);
-      const v=byDate[ds];
-      const cell=document.createElement('div');
-      cell.style.cssText='width:14px;height:14px;border-radius:2px;cursor:default;';
-      if(v!=null) {
-        const int=Math.min(v/70,1);
-        const r=Math.round(99+(22-99)*int), g=Math.round(102+(163-102)*int), b=Math.round(241+(81-241)*int);
-        cell.style.background='rgb('+r+','+g+','+b+')';
-        cell.title=ds+': '+v.toFixed(1)+'%';
-      } else { cell.style.background='#f1f5f9'; cell.title=ds+': no data'; }
-      cellRow.appendChild(cell);
-      d.setDate(d.getDate()+1);
-    }
-    moWrap.appendChild(cellRow); grid.appendChild(moWrap);
-  }
-};
-
-const calYears=[...new Set((window._DAILY_UTIL||[]).map(r=>r.d.slice(0,4)))].sort();
-window.buildCalTabs(calYears);
-window.buildCalendar(window._calActiveYear);
-
 // ── Vehicle Table ─────────────────────────────────────────────────────────────
 function renderVehicleTable(data, months) {
   const thead=document.getElementById('vehThead');
@@ -5205,12 +5144,18 @@ function computeAllMetrics(dateIndex,utilMatrix,activeVM) {
     if(i<11) return null;
     return{util:Math.round(monthly.slice(i-11,i+1).reduce((s,m)=>s+m.util,0)/12*100)/100,yr:monthly[i].yr,mo:monthly[i].mo};
   }).filter(Boolean);
+  if(ttmAll.length===0) throw new Error('Not enough months to compute TTM (need at least 12)');
   const ttm12=ttmAll.slice(-12);
   const ttmLabels=ttm12.map(t=>MN_LIVE[t.mo-1]+" '"+String(t.yr).slice(2));
-  const ttmCurrent=ttm12[ttm12.length-1].util;
-  const ttmPriorVal=ttmAll.length>=13?ttmAll[ttmAll.length-13].util:ttmAll[0].util;
+  const lastTTM=ttm12[ttm12.length-1];
+  if(!lastTTM) throw new Error('TTM array unexpectedly empty after slice');
+  const ttmCurrent=lastTTM.util;
+  const ttmPriorEntry=ttmAll.length>=13?ttmAll[ttmAll.length-13]:ttmAll[0];
+  const ttmPriorVal=ttmPriorEntry?ttmPriorEntry.util:ttmCurrent;
   const ttmPP=Math.round((ttmCurrent-ttmPriorVal)*100)/100;
-  const ps=ttmAll.length>=24?ttmAll[ttmAll.length-24]:ttmAll[0],pe=ttmAll.length>=13?ttmAll[ttmAll.length-13]:ttmAll[0];
+  const psEntry=ttmAll.length>=24?ttmAll[ttmAll.length-24]:ttmAll[0];
+  const peEntry=ttmAll.length>=13?ttmAll[ttmAll.length-13]:ttmAll[ttmAll.length-1];
+  const ps=psEntry||lastTTM, pe=peEntry||lastTTM;
   const ttmPriorLabel=MN_LIVE[ps.mo-1]+" '"+String(ps.yr).slice(2)+" – "+MN_LIVE[pe.mo-1]+" '"+String(pe.yr).slice(2);
   const ttmFleetRolling={};
   fleets.forEach(f=>{const mf=monthlyFleet[f];ttmFleetRolling[f]=mf.map((_,i)=>i<11?null:Math.round(mf.slice(i-11,i+1).reduce((s,m)=>s+m.util,0)/12*100)/100).filter(Boolean).slice(-12);});
@@ -5287,44 +5232,122 @@ function applyLiveMetrics(mt) {
   ttmFleetChart.update();
   // Fleet cards + calendar + vehicle table
   renderFleetCards(fleetDataArr,histYrs.map(String));
-  window._DAILY_UTIL=newDailyUtil;
-  const calYears=[...new Set(newDailyUtil.map(r=>r.d.slice(0,4)))].sort();
-  window._calActiveYear=calYears[calYears.length-1];
-  window.buildCalendar(window._calActiveYear); window.buildCalTabs(calYears);
   renderVehicleTable(newVehicleTTM,ttmLabels);
 }
 
-async function fetchAndRefresh(url) {
-  const statusEl=document.getElementById('liveStatus');
-  if(!url){statusEl.textContent='⚠ No URL';statusEl.style.color='#f59e0b';return;}
-  statusEl.textContent='Fetching…';statusEl.style.color='#94a3b8';
-  const proxies=[u=>u,u=>'https://corsproxy.io/?'+encodeURIComponent(u),u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)];
-  let csv=null,lastErr=null;
-  for(const proxy of proxies){
-    try{
-      const proxyUrl=proxy(url);
-      statusEl.textContent=proxyUrl===url?'Fetching…':'Fetching via proxy…';
-      const resp=await fetch(proxyUrl,{redirect:'follow'});
-      if(!resp.ok) throw new Error('HTTP '+resp.status);
-      const text=await resp.text();
-      if(!text||text.trim().length<10) throw new Error('Empty response');
-      csv=text;break;
-    }catch(err){lastErr=err;}
+// ── Cache constants ──────────────────────────────────────────────────────────
+const CACHE_KEY       = 'utilDash_csv';
+const CACHE_TS_KEY    = 'utilDash_ts';
+const CACHE_MAX_AGE   = 60 * 60 * 1000; // 1 hour in ms
+
+// ── Low-level: fetch CSV through proxy chain ─────────────────────────────────
+async function fetchCSV(url) {
+  const proxies = [
+    u => u,
+    u => 'https://corsproxy.io/?' + encodeURIComponent(u),
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  ];
+  let lastErr = null;
+  for (const proxy of proxies) {
+    try {
+      const resp = await fetch(proxy(url), { redirect: 'follow' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const text = await resp.text();
+      if (!text || text.trim().length < 10) throw new Error('Empty response');
+      return text;
+    } catch (err) { lastErr = err; }
   }
-  if(!csv){statusEl.textContent='✗ '+((lastErr&&lastErr.message)||'unknown error');statusEl.style.color='#ef4444';return;}
-  try{
-    const{dateIndex,utilMatrix,activeVM}=parseUtilCSV(csv);
-    if(!dateIndex.length) throw new Error('No date rows parsed');
-    const metrics=computeAllMetrics(dateIndex,utilMatrix,activeVM);
-    applyLiveMetrics(metrics);
-    statusEl.textContent='✓ Updated '+new Date().toLocaleTimeString()+' · '+dateIndex.length+' days';
-    statusEl.style.color='#10b981';
-  }catch(err){statusEl.textContent='✗ Parse: '+err.message;statusEl.style.color='#ef4444';console.error(err);}
+  throw lastErr || new Error('All fetch attempts failed');
 }
 
-window.addEventListener('load',()=>{
-  const url=document.getElementById('sheetUrl').value.trim();
-  if(url) fetchAndRefresh(url);
+// ── Parse + render CSV string ────────────────────────────────────────────────
+function renderCSV(csv) {
+  const { dateIndex, utilMatrix, activeVM } = parseUtilCSV(csv);
+  if (!dateIndex.length) throw new Error('No date rows parsed');
+  const metrics = computeAllMetrics(dateIndex, utilMatrix, activeVM);
+  applyLiveMetrics(metrics);
+  return dateIndex.length;
+}
+
+// ── Status bar helper ────────────────────────────────────────────────────────
+function setStatus(msg, color) {
+  const el = document.getElementById('liveStatus');
+  if (el) { el.textContent = msg; el.style.color = color || '#94a3b8'; }
+}
+
+function cacheAgeLabel(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  return mins < 2 ? 'just now' : mins < 60 ? mins + 'm ago' : Math.floor(mins/60) + 'h ago';
+}
+
+// ── Core: fetch live, cache, render ─────────────────────────────────────────
+async function fetchLiveAndCache(url, silent) {
+  if (!silent) setStatus('Fetching…', '#94a3b8');
+  try {
+    const csv = await fetchCSV(url);
+    // Save to cache
+    try {
+      localStorage.setItem(CACHE_KEY, csv);
+      localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
+    } catch(e) { /* storage full or private mode — ignore */ }
+    const days = renderCSV(csv);
+    setStatus('✓ Updated ' + new Date().toLocaleTimeString() + ' · ' + days + ' days', '#10b981');
+    return true;
+  } catch (err) {
+    // Live fetch failed — try falling back to cache
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      const ts = parseInt(localStorage.getItem(CACHE_TS_KEY) || '0');
+      if (cached) {
+        renderCSV(cached);
+        setStatus('⚠ Live fetch failed — showing cache from ' + cacheAgeLabel(ts), '#f59e0b');
+        return false;
+      }
+    } catch(e) {}
+    setStatus('✗ ' + (err.message || 'unknown error'), '#ef4444');
+    console.error('fetchLiveAndCache error:', err);
+    return false;
+  }
+}
+
+// ── Public: manual Refresh button ────────────────────────────────────────────
+async function fetchAndRefresh(url) {
+  if (!url) { setStatus('⚠ No URL', '#f59e0b'); return; }
+  await fetchLiveAndCache(url, false);
+}
+
+// ── Init: cache-first strategy ───────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  const url = document.getElementById('sheetUrl').value.trim();
+  if (!url) return;
+
+  let cachedCSV = null, cacheTs = 0;
+  try {
+    cachedCSV = localStorage.getItem(CACHE_KEY);
+    cacheTs   = parseInt(localStorage.getItem(CACHE_TS_KEY) || '0');
+  } catch(e) {}
+
+  const cacheAge = Date.now() - cacheTs;
+  const cacheFresh = cachedCSV && cacheAge < CACHE_MAX_AGE;
+
+  if (cachedCSV) {
+    // Render cache immediately — no blank screen
+    try {
+      const days = renderCSV(cachedCSV);
+      if (cacheFresh) {
+        setStatus('⚡ Cached · ' + cacheAgeLabel(cacheTs) + ' · ' + days + ' days', '#10b981');
+        return; // Cache is fresh — no background fetch needed
+      } else {
+        setStatus('⏳ Cache ' + cacheAgeLabel(cacheTs) + ' — refreshing…', '#94a3b8');
+      }
+    } catch(e) {
+      // Cache corrupted — fall through to live fetch
+      try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(CACHE_TS_KEY); } catch(_) {}
+    }
+  }
+
+  // Either no cache, stale cache, or corrupted — fetch live (silently if cache was shown)
+  await fetchLiveAndCache(url, !!cachedCSV);
 });
 </script>
 </body>
