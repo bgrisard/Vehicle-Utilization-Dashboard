@@ -63,7 +63,7 @@ h1{font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px;color
 <div style="background:#fff;padding:24px 10% 20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.07);border-bottom:1px solid #dde1e7">
   <div class="fleet-tags" id="fleetTags"></div>
   <h1>Vehicle Utilization Dashboard</h1>
-  <p class="subtitle" id="dashSubtitle">63 vehicles (LOCAL · MED · OTR · MINI) &nbsp;·&nbsp; 2023-01-01 – 2026-02-28 &nbsp;·&nbsp; 5 hrs/day = 100%</p>
+  <p class="subtitle" id="dashSubtitle">63 vehicles (LOCAL · MED · OTR · MINI · RTA) &nbsp;·&nbsp; 2023-01-01 – 2026-02-28 &nbsp;·&nbsp; 5 hrs/day = 100%</p>
 </div>
 
 <div style="padding:0 10% 32px">
@@ -75,14 +75,14 @@ h1{font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px;color
   <div>
     <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#fff;font-family:'DM Mono',monospace;padding:8px 14px;background:#1e2a3a;border-radius:6px;margin-bottom:12px">YTD</div>
     <div id="kpiYTDOverall" style="margin-bottom:10px"></div>
-    <div id="kpiYTDFleet" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+    <div id="kpiYTDFleet" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px"></div>
   </div>
 
   <!-- RIGHT: TTM -->
   <div style="border-left:1px solid #dde1e7;padding-left:24px">
     <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#fff;font-family:'DM Mono',monospace;padding:8px 14px;background:#1e2a3a;border-radius:6px;margin-bottom:12px">TTM</div>
     <div id="kpiTTMOverall" style="margin-bottom:10px"></div>
-    <div id="kpiTTMFleet" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+    <div id="kpiTTMFleet" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px"></div>
   </div>
 
 </div>
@@ -124,7 +124,7 @@ h1{font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px;color
       <div class="card-title">Fleet Performance Summary</div>
       <div class="card-subtitle">3-year utilization by fleet group · current fleet size</div>
     </div>
-    <div id="fleetCards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px"></div>
+    <div id="fleetCards" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px"></div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ h1{font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px;color
 
 <script>
 // ── Constants ────────────────────────────────────────────────────────────────
-const FLEET_COLORS = {LOCAL:'#3b82f6',MED:'#6366f1',OTR:'#f59e0b',MINI:'#64748b'};
+const FLEET_COLORS = {LOCAL:'#3b82f6',MED:'#6366f1',OTR:'#f59e0b',MINI:'#64748b',RTA:'#ef4444'};
 const YEAR_COLORS  = {'2023':'#3b4f7c','2024':'#5b8dd9','2025':'#1e2a3a','2026':'#f59e0b'};
 const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -4892,7 +4892,7 @@ renderAllKPIs({
   ytdFleets:Object.entries(ytdFleet).map(([f,d])=>{return{fleet:f,val:d.cur.toFixed(1)+'%',pp:d.pp,prior:d.prior.toFixed(1)+'%'}})  ,
   ttmSub:"Mar '25–Feb '26 · rolling avg",
   ttmVal:ttmAvg.toFixed(1)+'%', ttmPP:+ttmPP, ttmPriorTxt:'vs '+ttmPriorLabel,
-  ttmFleets:['LOCAL','MED','OTR','MINI'].map(f=>{
+  ttmFleets:['LOCAL','MED','OTR','MINI','RTA'].map(f=>{
     const fr=TTM_FLEET_ROLLING[f]||[], cur=fr.length?fr[fr.length-1]:0;
     const pp=fr.length>=2?Math.round((cur-fr[0])*100)/100:0;
     return{fleet:f,val:cur.toFixed(1)+'%',pp,prior:fr.length?fr[0].toFixed(1)+'%':'—'};
@@ -4956,7 +4956,7 @@ const ttmChart=new Chart(ttmCtx,{
     labels:TTM_LABELS,
     datasets:[
       {label:'Overall',data:TTM_DATA,borderColor:'#334155',backgroundColor:'rgba(51,65,85,0.06)',fill:true,borderWidth:2.5,pointRadius:3,pointHoverRadius:6,tension:0.3},
-      ...['LOCAL','MED','OTR','MINI'].map(f=>{const c=FLEET_COLORS[f];return{label:f,data:TTM_FLEET_ROLLING[f],borderColor:c,backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,pointHoverRadius:5,tension:0.3,borderDash:[4,3]}})
+      ...['LOCAL','MED','OTR','MINI','RTA'].map(f=>{const c=FLEET_COLORS[f];return{label:f,data:TTM_FLEET_ROLLING[f],borderColor:c,backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,pointHoverRadius:5,tension:0.3,borderDash:[4,3]}})
     ]
   },
   options:{responsive:true,maintainAspectRatio:false,...tooltipPlugin,scales:{x:scaleDefaults,y:{...yScalePct,max:80}}}
@@ -4968,14 +4968,14 @@ const ttmFleetChart=new Chart(ttmFCtx,{
   type:'line',
   data:{
     labels:TTM_LABELS,
-    datasets:['LOCAL','MED','OTR','MINI'].map(f=>{const c=FLEET_COLORS[f];return{label:f,data:TTM_FLEET[f],borderColor:c,backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:c,pointBorderColor:'#fff',pointBorderWidth:1.5,tension:0.3,spanGaps:false}})
+    datasets:['LOCAL','MED','OTR','MINI','RTA'].map(f=>{const c=FLEET_COLORS[f];return{label:f,data:TTM_FLEET[f],borderColor:c,backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:c,pointBorderColor:'#fff',pointBorderWidth:1.5,tension:0.3,spanGaps:false}})
   },
   options:{responsive:true,maintainAspectRatio:false,plugins:{...tooltipPlugin.plugins,legend:{display:false}},scales:{x:scaleDefaults,y:{...yScalePct,max:100}}}
 });
 
 // Fleet toggles
 const fleetTogWrap=document.getElementById('fleetToggles');
-['LOCAL','MED','OTR','MINI'].forEach((f,i)=>{
+['LOCAL','MED','OTR','MINI','RTA'].forEach((f,i)=>{
   const c=FLEET_COLORS[f], btn=document.createElement('button');
   btn.className='toggle-btn active'; btn.textContent=f;
   btn.style.cssText='background:'+c+'20;color:'+c+';border-color:'+c+'50';
@@ -5088,7 +5088,7 @@ renderVehicleTable(VEHICLE_TTM, VEH_MONTHS);
 // ═══════════════════════════════════════════════════════════════════════
 // ── Live CSV Engine ────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
-const KEEP_FLEETS=new Set(['LOCAL','MED','OTR','MINI']);
+const KEEP_FLEETS=new Set(['LOCAL','MED','OTR','MINI','RTA']);
 const MN_LIVE=MN;
 
 // ── CSV parser for quoted fields ─────────────────────────────────────────────
@@ -5167,7 +5167,7 @@ function parseVehicleHoursCSV(csvText) {
 
   for(let i=1;i<lines.length;i++){
     const row=parseCSVRow(lines[i]);
-    const vid=(row[ci.vid]||'').trim(); if(!vid) continue;
+    const vid=(row[ci.vid]||'').trim().replace(/^0+(\d)/,'$1'); if(!vid) continue;
     // Filter to 1Day Trips and Multi-day only (if BookingType column present)
     if(ci.bookingType>=0){
       const bt=(row[ci.bookingType]||'').trim();
@@ -5232,6 +5232,8 @@ function vehicleDenomDays(vid, ym, vehicleJoinDate) {
 // dateList = array of YYYY-MM-DD strings in the period
 // For each vehicle active in the period, denominator = sum of its denom days
 // across all months in the period (prorated for join month).
+const RTA_START = '2025-07-01'; // RTA vehicles excluded before this date
+
 function calcUtil(dateList, hrsMatrix, vehicleFleet, vehicleJoinDate, fleetFilter) {
   if(!dateList||!dateList.length) return 0;
   // Group dates by month
@@ -5251,16 +5253,18 @@ function calcUtil(dateList, hrsMatrix, vehicleFleet, vehicleJoinDate, fleetFilte
     if(!fleet) continue;
     if(fleetFilter&&fleet!==fleetFilter) continue;
 
+    // RTA vehicles: only count from RTA_START onward
+    const effectiveJoin = fleet==='RTA'
+      ? (vehicleJoinDate[vid]<RTA_START ? RTA_START : vehicleJoinDate[vid])
+      : vehicleJoinDate[vid];
+
     // For each month in the period, compute this vehicle's denom days and sum fracs
     for(const ym of Object.keys(byYM)){
-      const denomDays=vehicleDenomDays(vid,ym,vehicleJoinDate);
+      // Skip months entirely before RTA start for RTA vehicles
+      if(fleet==='RTA' && ym < RTA_START.slice(0,7)) continue;
+      const denomDays=vehicleDenomDays(vid,ym,{...vehicleJoinDate,[vid]:effectiveJoin});
       if(denomDays<=0) continue;
-      // Get all calendar days in this month that are in our date list
-      // AND within the vehicle's active window (>= joinDate)
-      const joinD=vehicleJoinDate[vid];
-      const datesInScope=byYM[ym].filter(d=>d>=joinD);
-      // Sum fracs for days with trips; zero for days without
-      // Denominator is all denom days, not just days with trips
+      const datesInScope=byYM[ym].filter(d=>d>=effectiveJoin);
       let fracSum=0;
       for(const d of datesInScope){
         fracSum+=dailyFrac(hrsMatrix,vid,d);
@@ -5273,16 +5277,19 @@ function calcUtil(dateList, hrsMatrix, vehicleFleet, vehicleJoinDate, fleetFilte
 }
 
 // ── Vehicle-month util: sum daily fracs / denom days for that month ───────────
-function vehicleMonthUtil(vid, ym, hrsMatrix, vehicleJoinDate) {
-  const denomDays=vehicleDenomDays(vid,ym,vehicleJoinDate);
+function vehicleMonthUtil(vid, ym, hrsMatrix, vehicleJoinDate, fleetForVid) {
+  // RTA vehicles: skip months before RTA_START
+  if(fleetForVid==='RTA' && ym < RTA_START.slice(0,7)) return null;
+  const effectiveJoin = fleetForVid==='RTA'
+    ? (vehicleJoinDate[vid]<RTA_START ? RTA_START : vehicleJoinDate[vid])
+    : vehicleJoinDate[vid];
+  const denomDays=vehicleDenomDays(vid,ym,{...vehicleJoinDate,[vid]:effectiveJoin});
   if(denomDays<=0) return null;
-  const joinD=vehicleJoinDate[vid];
-  const yr=parseInt(ym.slice(0,4)),mo=parseInt(ym.slice(5));
   const lastDay=daysInMonth(ym);
   let fracSum=0;
   for(let d=1;d<=lastDay;d++){
     const ds=ym+'-'+String(d).padStart(2,'0');
-    if(ds<joinD) continue;
+    if(ds<effectiveJoin) continue;
     fracSum+=dailyFrac(hrsMatrix,vid,ds);
   }
   return Math.round(fracSum/denomDays*1000)/10;
@@ -5306,7 +5313,7 @@ function computeAllMetrics(dateIndex,utilMatrix,vehicleFleet,activeVM,_hrsMatrix
   const byYM={};
   for(const d of dateIndex){const ym=d.slice(0,7);(byYM[ym]=byYM[ym]||[]).push(d);}
   const ymKeys=Object.keys(byYM).sort();
-  const fleets=['LOCAL','MED','OTR','MINI'];
+  const fleets=['LOCAL','MED','OTR','MINI','RTA'];
 
   const monthly=ymKeys.map(k=>{
     const yr=parseInt(k.slice(0,4)),mo=parseInt(k.slice(5));
@@ -5437,12 +5444,12 @@ function computeAllMetrics(dateIndex,utilMatrix,vehicleFleet,activeVM,_hrsMatrix
     const mv=ttmMonthsList.map(({ym})=>{
       const f=(vehicleFleet[vid]||{})[ym];
       if(!f||!KEEP_FLEETS.has(f)) return null;
-      return vehicleMonthUtil(vid,ym,hrsMatrix,vehicleJoinDate);
+      return vehicleMonthUtil(vid,ym,hrsMatrix,vehicleJoinDate,f||lf);
     });
     const valid=mv.filter(v=>v!==null);
     newVehicleTTM.push({v:vid,f:lf,m:mv,ttm:valid.length?Math.round(valid.reduce((a,b)=>a+b,0)/valid.length*10)/10:null});
   }
-  const fo={LOCAL:0,MED:1,OTR:2,MINI:3};
+  const fo={LOCAL:0,MED:1,OTR:2,MINI:3,RTA:4};
   newVehicleTTM.sort((a,b)=>(fo[a.f]??9)-(fo[b.f]??9)||a.v.localeCompare(b.v));
 
   const histYrs=years.slice(0,-1).slice(-3);
@@ -5474,7 +5481,7 @@ function applyLiveMetrics(mt) {
   const{years,latestYr,prevYr,latestMo,monthlyByYear,annual,ttm12,ttmLabels,ttmCurrent,ttmPriorVal,ttmPP,ttmPriorLabel,ttmFleetRolling,ttmFleetRaw,ytdCur,ytdPrior,ytdPP,ytdFleetNew,newDailyUtil,newVehicleTTM,fleetDataArr,histYrs,firstDate,lastDate,totalVehicles}=mt;
   // Subtitle
   const subEl=document.getElementById('dashSubtitle');
-  if(subEl) subEl.innerHTML=totalVehicles+' vehicles (LOCAL · MED · OTR · MINI) &nbsp;·&nbsp; '+firstDate+' – '+lastDate+' &nbsp;·&nbsp; 5 hrs/day = 100%';
+  if(subEl) subEl.innerHTML=totalVehicles+' vehicles (LOCAL · MED · OTR · MINI · RTA) &nbsp;·&nbsp; '+firstDate+' – '+lastDate+' &nbsp;·&nbsp; 5 hrs/day = 100%';
   // TTM subtitle
   const ttmSubEl=document.getElementById('ttmSubtitle');
   if(ttmSubEl) ttmSubEl.textContent='Rolling 12-month avg ('+ttmLabels[0]+' – '+ttmLabels[ttmLabels.length-1]+') · Overall + fleet breakdown';
@@ -5485,7 +5492,7 @@ function applyLiveMetrics(mt) {
     ytdFleets:Object.entries(ytdFleetNew).map(([f,d])=>{return{fleet:f,val:d.cur.toFixed(1)+'%',pp:d.pp,prior:d.prior.toFixed(1)+'%'}})  ,
     ttmSub:ttmLabels[0]+'–'+ttmLabels[ttmLabels.length-1]+' · rolling avg',
     ttmVal:ttmCurrent.toFixed(1)+'%', ttmPP, ttmPriorTxt:'vs '+ttmPriorLabel,
-    ttmFleets:['LOCAL','MED','OTR','MINI'].map(f=>{
+    ttmFleets:['LOCAL','MED','OTR','MINI','RTA'].map(f=>{
       const fr=ttmFleetRolling[f]||[],cur=fr.length?fr[fr.length-1]:0;
       const pp=fr.length>=2?Math.round((cur-fr[0])*100)/100:0;
       return{fleet:f,val:cur.toFixed(1)+'%',pp,prior:fr.length?fr[0].toFixed(1)+'%':'—'};
@@ -5499,7 +5506,7 @@ function applyLiveMetrics(mt) {
   years.filter(yr=>yr!==2023).forEach(yr=>{const c=YEAR_COLORS[yr]||'#6366f1',btn=document.createElement('button');btn.className='toggle-btn active';btn.textContent=yr;btn.style.cssText='background:'+c+'20;color:'+c+';border-color:'+c+'50';let on=true;btn.addEventListener('click',()=>{on=!on;btn.classList.toggle('active',on);btn.style.cssText=on?'background:'+c+'20;color:'+c+';border-color:'+c+'50':'';yoyChart.data.datasets.forEach(ds=>{if(ds.label==yr)ds.hidden=!on;});yoyChart.update();});togWrap.appendChild(btn);});
   // TTM charts
   ttmChart.data.labels=ttmLabels; ttmChart.data.datasets[0].data=ttm12;
-  ['LOCAL','MED','OTR','MINI'].forEach((f,i)=>{ttmChart.data.datasets[i+1].data=ttmFleetRolling[f];});
+  ['LOCAL','MED','OTR','MINI','RTA'].forEach((f,i)=>{ttmChart.data.datasets[i+1].data=ttmFleetRolling[f];});
   ttmChart.update();
   ttmFleetChart.data.labels=ttmLabels;
   ttmFleetChart.data.datasets.forEach(ds=>{ds.data=ttmFleetRaw[ds.label]||[];});
@@ -5510,10 +5517,10 @@ function applyLiveMetrics(mt) {
 }
 
 // ── Cache constants ──────────────────────────────────────────────────────────
-const CACHE_KEY       = 'utilDash_v6_csv';
-const CACHE_TS_KEY    = 'utilDash_v6_ts';
-const FLEET_CACHE_KEY = 'utilDash_v6_fleet';
-const FLEET_CACHE_TS  = 'utilDash_v6_fleet_ts';
+const CACHE_KEY       = 'utilDash_v9_csv';
+const CACHE_TS_KEY    = 'utilDash_v9_ts';
+const FLEET_CACHE_KEY = 'utilDash_v9_fleet';
+const FLEET_CACHE_TS  = 'utilDash_v9_fleet_ts';
 const CACHE_MAX_AGE   = 60 * 60 * 1000; // 1 hour in ms
 
 // ── Parse fleet matrix CSV ───────────────────────────────────────────────────
@@ -5540,7 +5547,7 @@ function parseFleetMatrix(csvText) {
   const vehicleFleet = {};
   for (let r = 2; r < rows.length; r++) {
     const row = rows[r];
-    const vid = (row[0] || '').trim();
+    const vid = (row[0] || '').trim().replace(/^0+(\d)/,'$1');
     if (!vid || vid.toLowerCase() === 'id') continue;
     vehicleFleet[vid] = vehicleFleet[vid] || {};
     for (let c = 1; c < row.length; c++) {
